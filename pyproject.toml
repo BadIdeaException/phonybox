@@ -1,0 +1,30 @@
+[project]
+name = "phonybox"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "BadIdeaException",email = "7235795+BadIdeaException@users.noreply.github.com"}
+]
+requires-python = ">=3.12"
+packages = [
+    { include = "phonybox", from = "src" }
+]
+license = { file = "LICENSE.md" }
+
+[tool.poetry.group.test.dependencies]
+pytest = ">=9.0.2,<10.0.0"
+pytest-asyncio = "^1.3.0"
+pytest-mock = "^3.15.1"
+pytest-clarity = "^1.0.1"
+pytest-spec = "^6.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pylint = ">=4.0.4,<5.0.0"
+black = ">=25.12.0,<26.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "--spec --tb=short"
