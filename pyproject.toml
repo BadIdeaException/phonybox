@@ -6,6 +6,9 @@ authors = [
     {name = "BadIdeaException",email = "7235795+BadIdeaException@users.noreply.github.com"}
 ]
 requires-python = ">=3.12"
+dependencies = [
+    "websockets (>=17.1,<18.0)"
+]
 packages = [
     { include = "phonybox", from = "src" }
 ]

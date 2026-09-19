@@ -1,0 +1,60 @@
+---
+- name: Provision Phonybox
+  hosts: all
+  become: true
+
+  vars:
+    soloist_url: https://soloist-builds.spotifycdn.com/soloist_release_arm64.tar.gz
+    soloist_dir: /usr/local/lib/soloist
+    soloist_binary: /usr/local/bin/soloist
+
+  tasks:
+    - name: Install PipeWire and PulseAudio compatibility
+      ansible.builtin.apt:
+        name:
+          - pipewire
+          - pipewire-pulse
+          - pipewire-audio
+          - pulseaudio-utils
+        state: present
+        update_cache: true
+
+    - name: Enable lingering for the audio user
+      ansible.builtin.command:
+        cmd: "loginctl enable-linger {{ ansible_user_id }}"
+        creates: "/var/lib/systemd/linger/{{ ansible_user_id }}"
+
+    - name: Enable PipeWire
+      ansible.builtin.systemd:
+        name: pipewire.service
+        scope: user
+        enabled: true
+        state: started
+      become: false
+
+    - name: Enable PipeWire PulseAudio compatibility
+      ansible.builtin.systemd:
+        name: pipewire-pulse.service
+        scope: user
+        enabled: true
+        state: started
+      become: false
+
+    - name: Create Soloist installation directory
+      ansible.builtin.file:
+        path: "{{ soloist_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Download and extract Soloist
+      ansible.builtin.unarchive:
+        src: "{{ soloist_url }}"
+        dest: "{{ soloist_dir }}"
+        remote_src: true
+        creates: "{{ soloist_dir }}/soloist"
+
+    - name: Create Soloist symlink
+      ansible.builtin.file:
+        src: "{{ soloist_dir }}/soloist"
+        dest: "{{ soloist_binary }}"
+        state: link
