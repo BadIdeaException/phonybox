@@ -70,11 +70,6 @@ Vagrant.configure("2") do |config|
     mkdir -p /usr/local/lib/soloist
     curl -L https://soloist-builds.spotifycdn.com/soloist_release_x86_64.tar.gz | tar xz -C /usr/local/lib/soloist && ln -s /usr/local/lib/soloist/soloist /usr/local/bin/soloist
   SHELL
-
-  # mDNS for Spotify Connect
-  config.vm.network "forwarded_port", host: 5353, guest: 5353
-  config.vm.network "forwarded_port", host: 80, guest: 80
-  config.vm.network "forwarded_port", host: 443, guest: 443
   
   config.ssh.username="vagrant"
   config.ssh.private_key_path = dev_dir + "vagrant.key"
