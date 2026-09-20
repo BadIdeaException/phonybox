@@ -52,8 +52,8 @@ Vagrant.configure("2") do |config|
   config.ssh.forward_agent = true  
   config.vm.provision "file", source: "~/.ssh/", destination: "/home/vagrant/.ssh"
   config.vm.provision "file", source: "~/Programmieren/.dev/.gitignore", destination: "/home/vagrant/.gitignore"
+  config.vm.provision "shell", name: "Install common system applications", inline: "apt-get install -y nano less git curl wget"
   config.vm.provision "shell", name: "Apply global gitignore", privileged: false, inline: "git config --global core.excludesFile 'home/vagrant/.gitignore'"
-
   config.vm.provision "shell", name: "Install python3 and pip", inline: "apt-get update && apt-get install -y python3 python3-pip"  
   config.vm.provision "shell", name: "Make python3 the default", inline: "apt-get install -y python-is-python3"
   config.vm.provision "shell", name: "Install poetry", privileged: false, inline: <<-SHELL
@@ -65,6 +65,14 @@ Vagrant.configure("2") do |config|
       echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/vagrant/.bashrc
     fi
   SHELL
+
+  config.vm.provision "shell", name: "Install Ansible", inline: <<-SHELL
+    apt-get install -y software-properties-common
+    add-apt-repository --yes --update ppa:ansible/ansible
+    apt-get install -y ansible
+  SHELL
+
+  config.vm.provision "shell", name: "Symlink ansible.cfg", inline: "ln -s /vagrant/provision/ansible.cfg /home/vagrant/.ansible.cfg"
 
   config.vm.provision "shell", name: "Install Spotify Soloist", inline: <<-SHELL
     mkdir -p /usr/local/lib/soloist

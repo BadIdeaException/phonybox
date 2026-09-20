@@ -1,0 +1,24 @@
+[Unit]
+Description=Spotify Soloist
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ phonybox_user }}
+Group={{ phonybox_user }}
+
+EnvironmentFile=/etc/soloist.env
+
+ExecStart=/usr/local/bin/soloist \
+    --device-name "Phonybox" \
+    --api-key ${SOLOIST_API_KEY} \
+    --data-dir /var/lib/soloist \
+    --cache-dir /var/cache/soloist \
+    --ws 127.0.0.1:10000
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

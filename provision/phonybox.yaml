@@ -3,12 +3,22 @@
   hosts: all
   become: true
 
+  vars_files:
+    - secrets.yaml
+
   vars:
+    phonybox_user: phonybox
     soloist_url: https://soloist-builds.spotifycdn.com/soloist_release_arm64.tar.gz
     soloist_dir: /usr/local/lib/soloist
     soloist_binary: /usr/local/bin/soloist
 
   tasks:
+    - name: Create user
+      ansible.builtin.user:
+        name: "{{ phonybox_user }}"
+        system: true
+        create_home: true
+
     - name: Install PipeWire and PulseAudio compatibility
       ansible.builtin.apt:
         name:
@@ -21,8 +31,14 @@
 
     - name: Enable lingering for the audio user
       ansible.builtin.command:
-        cmd: "loginctl enable-linger {{ ansible_user_id }}"
-        creates: "/var/lib/systemd/linger/{{ ansible_user_id }}"
+        cmd: "loginctl enable-linger {{ phonybox_user }}"
+        creates: "/var/lib/systemd/linger/{{ phonybox_user }}"
+
+    - name: Get Phonybox user UID
+      ansible.builtin.command:
+        cmd: "id -u {{ phonybox_user }}"
+      register: phonybox_uid
+      changed_when: false
 
     - name: Enable PipeWire
       ansible.builtin.systemd:
@@ -30,7 +46,10 @@
         scope: user
         enabled: true
         state: started
-      become: false
+      become: true
+      become_user: "{{ phonybox_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ phonybox_uid.stdout }}"
 
     - name: Enable PipeWire PulseAudio compatibility
       ansible.builtin.systemd:
@@ -39,6 +58,22 @@
         enabled: true
         state: started
       become: false
+
+    - name: Create Soloist data directory
+      ansible.builtin.file:
+        path: /var/lib/soloist
+        state: directory
+        owner: "{{ phonybox_user }}"
+        group: "{{ phonybox_user }}"
+        mode: "0700"
+
+    - name: Create Soloist cache directory
+      ansible.builtin.file:
+        path: /var/cache/soloist
+        state: directory
+        owner: "{{ phonybox_user }}"
+        group: "{{ phonybox_user }}"
+        mode: "0700"
 
     - name: Create Soloist installation directory
       ansible.builtin.file:
@@ -58,3 +93,36 @@
         src: "{{ soloist_dir }}/soloist"
         dest: "{{ soloist_binary }}"
         state: link
+
+    - name: Write Soloist API key
+      ansible.builtin.copy:
+        dest: /etc/soloist.env
+        content: |
+          SOLOIST_API_KEY={{ soloist_api_key }}
+        owner: "{{ phonybox_user }}"
+        group: "{{ phonybox_user }}"
+        mode: "0600"
+
+    - name: Install Soloist systemd service
+      ansible.builtin.template:
+        src: soloist.service
+        dest: /etc/systemd/system/soloist.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart Soloist
+
+    - name: Enable and start Soloist
+      ansible.builtin.systemd:
+        name: soloist.service
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Restart Soloist
+      ansible.builtin.systemd:
+        name: soloist.service
+        state: restarted
+        daemon_reload: true
