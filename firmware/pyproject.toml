@@ -12,7 +12,7 @@ dependencies = [
 packages = [
     { include = "phonybox", from = "src" }
 ]
-license = { file = "LICENSE.md" }
+license = { file = "../LICENSE.md" }
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=9.0.2,<10.0.0"
