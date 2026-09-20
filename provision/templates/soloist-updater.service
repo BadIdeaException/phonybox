@@ -1,0 +1,22 @@
+#####
+#
+# systemd service that runs the soloist-updater.py, and if it fails, retries with an exponential backoff.
+#
+#####
+
+
+[Unit]
+Description=Update Spotify Soloist
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/soloist-updater/soloist-updater
+Restart=on-failure
+# Initial delay: 5 seconds
+RestartSec=5sec
+# Maximum delay: 3 hours
+RestartMaxDelaySec=3h
+# Progress from initial to maximum over 11 steps with exponential backoff
+RestartSteps=11

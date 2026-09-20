@@ -1,0 +1,16 @@
+#####
+#
+# systemd timer that runs the updater service regularly.
+#
+#####
+
+
+[Unit]
+Description=Check for Spotify Soloist updates
+
+[Timer]
+OnUnitActiveSec=7d
+Persistent=true
+
+[Install]
+WantedBy=timers.target

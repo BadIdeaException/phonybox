@@ -57,7 +57,10 @@
         scope: user
         enabled: true
         state: started
-      become: false
+      become: true
+      become_user: "{{ phonybox_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ phonybox_uid.stdout }}"
 
     - name: Create Soloist data directory
       ansible.builtin.file:
@@ -120,9 +123,57 @@
         state: started
         daemon_reload: true
 
+    - name: Create soloist updater directory
+      ansible.builtin.file:
+        path: /usr/local/lib/soloist-updater
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install Soloist updater
+      ansible.builtin.copy:
+        src: soloist-updater.py
+        dest: /usr/local/lib/soloist-updater/soloist-updater
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart Soloist updater timer
+
+    - name: Install Soloist updater service
+      ansible.builtin.template:
+        src: soloist-updater.service
+        dest: /etc/systemd/system/soloist-updater.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Soloist updater timer
+
+    - name: Install Soloist updater timer
+      ansible.builtin.template:
+        src: soloist-updater.timer
+        dest: /etc/systemd/system/soloist-updater.timer
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Soloist updater timer
+
+    - name: Enable and start Soloist updater timer
+      ansible.builtin.systemd:
+        name: soloist-updater.timer
+        enabled: true
+        state: started
+        daemon_reload: true
+  
   handlers:
     - name: Restart Soloist
       ansible.builtin.systemd:
         name: soloist.service
         state: restarted
         daemon_reload: true
+    
+    - name: Restart Soloist updater timer
+      ansible.builtin.systemd:
+        name: soloist-updater.timer
+        state: restarted
+        daemon_reload: true        
