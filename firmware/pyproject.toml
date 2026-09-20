@@ -9,10 +9,12 @@ requires-python = ">=3.12"
 dependencies = [
     "websockets (>=17.1,<18.0)"
 ]
+license = { file = "../LICENSE.md" }
+
+[tool.poetry]
 packages = [
     { include = "phonybox", from = "src" }
 ]
-license = { file = "../LICENSE.md" }
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=9.0.2,<10.0.0"
