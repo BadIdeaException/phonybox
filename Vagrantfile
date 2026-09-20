@@ -25,7 +25,7 @@ end
 
 Vagrant.configure("2") do |config|
   config.vm.provider "docker" do |docker|
-    docker.image = "badideaexception/dev-base:1"
+    docker.image = "badideaexception/dev-env:26.04"
     docker.has_ssh = true
     docker.remains_running = true
     # Use project's directory name as name for the container.

@@ -5,9 +5,10 @@ description = ""
 authors = [
     {name = "BadIdeaException",email = "7235795+BadIdeaException@users.noreply.github.com"}
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
-    "websockets (>=17.1,<18.0)"
+    "websockets (>=17.1,<18.0)",
+    "gpiozero (>=2.0.1.post3,<3.0.0)"
 ]
 license = { file = "../LICENSE.md" }
 
