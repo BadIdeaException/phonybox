@@ -41,7 +41,7 @@ ARCH = {
     "aarch64": "arm64",
     "x86_64": "x86_64",
 }[platform.machine()]
-
+USER = "phonybox"
 parser = argparse.ArgumentParser()
 parser.add_argument("--force", action="store_true", help="Force the update even if the current version is up to date")
 parser.add_argument("--dry-run", action="store_true", help="Show what would be done without making changes")
@@ -84,11 +84,11 @@ def extract(archive: Path) -> Path:
 
 
 def start_service(service: str):
-    subprocess.run(["systemctl", "start", service], check=True)
+    subprocess.run(["systemctl", f"--machine={USER}@.host", "--user", "start", service], check=True)
 
 
 def stop_service(service: str):
-    subprocess.run(["systemctl", "stop", service], check=True)
+    subprocess.run(["systemctl", f"--machine={USER}@.host", "--user", "stop", service], check=True)
 
 
 def update(old: Path, new: Path, backup: Path | None = None):

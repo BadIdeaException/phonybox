@@ -18,6 +18,7 @@
         name: "{{ phonybox_user }}"
         system: true
         create_home: true
+        groups: audio
 
     - name: Install PipeWire and PulseAudio compatibility
       ansible.builtin.apt:
@@ -109,7 +110,7 @@
     - name: Install Soloist systemd service
       ansible.builtin.template:
         src: soloist.service
-        dest: /etc/systemd/system/soloist.service
+        dest: /etc/systemd/user/soloist.service
         owner: root
         group: root
         mode: "0644"
@@ -119,9 +120,14 @@
     - name: Enable and start Soloist
       ansible.builtin.systemd:
         name: soloist.service
+        scope: user
         enabled: true
         state: started
         daemon_reload: true
+      become: true
+      become_user: "{{ phonybox_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ phonybox_uid.stdout }}"
 
     - name: Create soloist updater directory
       ansible.builtin.file:
@@ -169,11 +175,16 @@
     - name: Restart Soloist
       ansible.builtin.systemd:
         name: soloist.service
+        scope: user
         state: restarted
         daemon_reload: true
-    
+      become: true
+      become_user: "{{ phonybox_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ phonybox_uid.stdout }}"
+
     - name: Restart Soloist updater timer
       ansible.builtin.systemd:
         name: soloist-updater.timer
         state: restarted
-        daemon_reload: true        
+        daemon_reload: true
