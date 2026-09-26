@@ -130,3 +130,20 @@ class TestSpotify:
             assert handler.received[0:2] == [
                 { "type": "command", "command": f"set_repeat_{item["kind"]}", "enabled": item["value"] } for item in sequence
             ]
+
+
+    @pytest.mark.asyncio
+    async def test_is_playing(self, spotify):
+        handler = Handler(responses = [
+            # See https://developer.spotify.com/documentation/soloist/reference/websocket-api
+            { "type": "playback_state", "status": "playing" },
+            { "type": "playback_state", "status": "buffering" },
+            { "type": "playback_state", "status": "paused" },
+            { "type": "playback_state", "status": "idle" }
+        ])
+
+        async with websockets.serve(handler.handle, host="127.0.0.1", port=spotify.port):
+            assert await spotify.is_playing()
+            assert await spotify.is_playing()
+            assert not await spotify.is_playing()
+            assert not await spotify.is_playing()

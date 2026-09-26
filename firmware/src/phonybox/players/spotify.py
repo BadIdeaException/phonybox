@@ -52,6 +52,12 @@ class Spotify(Player):
 
 
     @override
+    async def is_playing(self):
+        answer = await self._send_command("get_state")
+        return answer["status"] in ("playing", "buffering")
+
+
+    @override
     async def next(self):
         await self._send_command("skip_next")
 

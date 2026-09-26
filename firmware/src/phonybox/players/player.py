@@ -30,6 +30,11 @@ class Player(ABC):
 
 
     @abstractmethod
+    async def is_playing(self) -> bool:
+        ...
+
+
+    @abstractmethod
     async def shuffle(self, new_value: bool | None) -> bool:
         ...
 
