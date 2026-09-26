@@ -10,7 +10,7 @@ class Player(ABC):
 
 
     @abstractmethod
-    async def play(self, uri: str) -> None:
+    async def play(self, uri: None | str = None) -> None:
         ...
 
 
@@ -35,10 +35,10 @@ class Player(ABC):
 
 
     @abstractmethod
-    async def shuffle(self, new_value: bool | None) -> bool:
+    async def shuffle(self, new_value: bool | None = None) -> bool:
         ...
 
 
     @abstractmethod
-    async def repeat(self, new_value: RepeatType | None) -> RepeatType:
+    async def repeat(self, new_value: RepeatType | None = None) -> RepeatType:
         ...
