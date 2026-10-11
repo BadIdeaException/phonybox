@@ -9,6 +9,7 @@ import logging
 from .mifare import MifareClassicReader
 from .ntag21x import NTAG21xReader
 from .card import Card
+from .errors import NFCError
 
 
 logger = logging.getLogger(__name__)
