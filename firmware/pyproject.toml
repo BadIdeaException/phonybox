@@ -8,7 +8,10 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "websockets (>=17.1,<18.0)",
-    "gpiozero (>=2.0.1.post3,<3.0.0)"
+    "gpiozero (>=2.0.1.post3,<3.0.0)",
+    "adafruit-circuitpython-pn532 (>=2.4.9,<3.0.0)",
+    "rpi-gpio (>=0.7.1,<0.8.0)",
+    "ndeflib (>=0.3.3,<0.4.0)"
 ]
 license = { file = "../LICENSE.md" }
 

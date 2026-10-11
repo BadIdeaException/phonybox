@@ -1,0 +1,2 @@
+class NFCError(RuntimeError):
+    pass
