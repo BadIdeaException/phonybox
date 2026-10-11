@@ -82,7 +82,8 @@ class TestCreateDevices:
                 control.pin.drive_low()
 
             event = await asyncio.wait_for(hw.events.get(), timeout=0.1)
-            assert event == control_name
+            assert event.type == "control"
+            assert event.payload == control_name
 
 
     async def test_emits_events_on_card(self, hw):
@@ -93,8 +94,9 @@ class TestCreateDevices:
             event = await asyncio.wait_for(hw.events.get(), timeout=0.1)
             hw.nfc.pn532.remove_card()
 
-            assert isinstance(event, Card)
-            assert event == card
+            assert event.type == "nfc_tag"
+            assert isinstance(event.payload, Card)
+            assert event.payload == card
 
 
     async def test_cleanup_on_context_manager_exit(self, hw):

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from gpiozero import Button, LED
 import asyncio
 import contextlib
@@ -5,8 +6,25 @@ from threading import Thread
 from collections.abc import Callable, Iterable
 from phonybox.drivers.pn532 import Card, PN532, NFCError
 from typing import override
+from dataclasses import dataclass
+
 
 type Control = Button | LED
+
+
+@dataclass
+class Event:
+    type: str
+    payload: str | Card
+
+    @classmethod
+    def from_payload(cls, payload: str | Card) -> Event:
+        if isinstance(payload, Card):
+            return Event("nfc_tag", payload)
+        elif isinstance(payload, str):
+            return Event("control", payload)
+        else:
+            raise ValueError(f"Unknown payload kind {type(payload).__name__}")
 
 
 class Hardware:
@@ -51,11 +69,11 @@ class Hardware:
             """
             Enqueue the given event if the queue is still active. Thread-safe.
             """
-            def enqueue_if_possible(event: str | Card):
+            def enqueue_if_possible(event: Event):
                 with contextlib.suppress(asyncio.QueueShutDown): 
                     self.events.put_nowait(event)
 
-            loop.call_soon_threadsafe(enqueue_if_possible, event)
+            loop.call_soon_threadsafe(enqueue_if_possible, Event.from_payload(event))
 
         self.controls = {}
         self.events = asyncio.Queue()
