@@ -52,7 +52,7 @@ async def hw():
 
 
 @pytest.mark.asyncio
-class TestCreateDevices:
+class TestHardware:
     async def test_creates_controls(self, hw):
         with hw:
             for (name, kind, pin) in CONTROL_DEFINITION:
