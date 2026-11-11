@@ -1,12 +1,22 @@
-from typing import Self
+from typing import Self, Protocol
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import IntEnum
 
-class Player(ABC):
-    class RepeatType(Enum):
+
+class PlayerFactory(Protocol):
+    @classmethod
+    def wants(cls, uri) -> bool:
+        ...
+
+    def __call__(self) -> Player: 
+        ...
+
+
+class Player(ABC, PlayerFactory):
+    class RepeatType(IntEnum):
         NONE = 0
-        TRACK = 1
-        PLAYLIST = 2
+        PLAYLIST = 1
+        TRACK = 2
 
 
     @abstractmethod

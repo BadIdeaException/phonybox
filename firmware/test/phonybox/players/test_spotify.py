@@ -27,16 +27,14 @@ def spotify():
 
 class TestSpotify:
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ("command", "spotify_command", "extras"),
-        [
-            ("play", "play", { "uri": "spotify:track:123"} ),
-            ("pause", "pause", {}),
-            ("next", "skip_next", {}),
-            ("prev", "skip_prev", {})
+    @pytest.mark.parametrize(("command", "spotify_command"), [
+            ("play", "play"),
+            ("pause", "pause"),
+            ("next", "skip_next"),
+            ("prev", "skip_prev")
         ], 
         ids=[ "play", "pause", "next", "prev" ])
-    async def test_command(self, spotify, command, spotify_command, extras):
+    async def test_basic_command(self, spotify, command, spotify_command):
         handler = Handler(responses = [{
             "type": "command_result",
             "command": spotify_command
@@ -44,15 +42,31 @@ class TestSpotify:
 
         async with websockets.serve(handler.handle, host="127.0.0.1", port=spotify.port):
             method = getattr(spotify, command)
-            await method(**extras)
+            await method()
             
             assert handler.received == [
-                { "type": "command", "command": spotify_command, **extras }
+                { "type": "command", "command": spotify_command }
             ]
 
 
     @pytest.mark.asyncio
-    async def test_error(self, spotify):
+    @pytest.mark.parametrize("input", [
+        "spotify:track:12345",
+        "https://open.spotify.com/track/12345" # should be transformed to spotify:track:12345
+    ])
+    async def test_play_with_resource(self, spotify, input):
+        handler = Handler(responses = [{
+            "type": "command_result",
+            "command": "play"
+        }])
+        async with websockets.serve(handler.handle, host="127.0.0.1", port=spotify.port):
+            await spotify.play(input)
+            assert handler.received == [
+                { "type": "command", "command": "play", "uri": "spotify:track:12345" }
+            ]
+
+    @pytest.mark.asyncio
+    async def test_error_from_command(self, spotify):
         message = "Error message"
         handler = Handler(responses = [
             { "type": "error", "message": message }
@@ -147,3 +161,23 @@ class TestSpotify:
             assert await spotify.is_playing()
             assert not await spotify.is_playing()
             assert not await spotify.is_playing()
+
+
+    @pytest.mark.parametrize("input", [ 
+        "http://open.spotify.com/track/12345",
+        "http://open.spotify.com/playlist/67890",
+        "https://open.spotify.com/track/12345",
+        "https://open.spotify.com/playlist/67890",
+        "spotify:track:12345",
+        "spotify:playlist:67890",
+    ])
+    def test_wants(self, input):
+        assert Spotify.wants(input)
+
+
+    @pytest.mark.parametrize("input", [
+        "https://somethingelse.com/12345",
+        "somethingelse:xyz:123",
+    ])
+    def test_wants_not(self, input):
+        assert not Spotify.wants(input)
