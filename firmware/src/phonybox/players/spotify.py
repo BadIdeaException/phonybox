@@ -2,6 +2,7 @@ from typing import override
 from .player import Player
 from websockets.asyncio.client import ClientConnection, connect
 import json
+import re
 
 
 class ProtocolError(RuntimeError):
@@ -9,6 +10,9 @@ class ProtocolError(RuntimeError):
 
 
 class Spotify(Player):
+    URL_SCHEME = re.compile(r"^https?://open\.spotify\.com/(?P<type>track|playlist)/(?P<id>\w+)")
+    URI_SCHEME = re.compile(r"^spotify:(?P<type>track|playlist):(?P<id>\w+)$")
+
     def __init__(self, host: str, port: int) -> None:
         self.host = host
         self.port = port
@@ -42,8 +46,15 @@ class Spotify(Player):
 
 
     @override 
-    async def play(self, uri):
-        await self._send_command("play", uri=uri)
+    async def play(self, uri=None):
+        if uri is not None and (match := Spotify.URL_SCHEME.search(uri)) is not None:
+            # uri is a url, convert it to spotify:<type>:<id> format
+            uri = f"spotify:{match.group("type")}:{match.group("id")}"
+        
+        if uri is None:
+            await self._send_command("play")
+        else:
+            await self._send_command("play", uri=uri)
 
 
     @override
@@ -96,3 +107,8 @@ class Spotify(Player):
             "context": Player.RepeatType.PLAYLIST
         }[answer["options"]["repeat"]]
         
+
+    @classmethod
+    @override
+    def wants(cls, uri):
+        return cls.URI_SCHEME.search(uri) is not None or cls.URL_SCHEME.search(uri) is not None
