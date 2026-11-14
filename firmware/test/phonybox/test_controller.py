@@ -1,5 +1,5 @@
 from phonybox.controller import Controller
-from phonybox.hardware import Event
+from phonybox.hardware import Event, StatusIndicator
 from phonybox.players.player import Player
 from unittest.mock import Mock, MagicMock, AsyncMock
 import contextlib
@@ -14,7 +14,8 @@ def controller():
     The first factory never wants, the second always wants and returns a mocked player.
     """
     events = asyncio.Queue()
-    controller = Controller(events)
+    status_indicator = Mock(StatusIndicator)
+    controller = Controller(events, status_indicator)
 
     factory1 = Mock()
     factory1.wants.return_value = False
@@ -49,13 +50,15 @@ class TestController:
     @pytest.mark.parametrize("current_shuffle", [ True, False ])
     async def test_shuffle(self, controller, current_shuffle, mocker):
         player_shuffle = controller.current_player.shuffle
-        player_shuffle.side_effect=lambda arg=None: current_shuffle if arg is None else arg
+        player_shuffle.side_effect=lambda arg=None: current_shuffle if arg is None else arg        
 
         task = asyncio.create_task(controller.run())
         try:
             controller.event_source.put_nowait(Event("control", "shuffle"))
             await asyncio.sleep(0)
-            player_shuffle.assert_awaited_with(not current_shuffle)
+            new_shuffle = not current_shuffle
+            player_shuffle.assert_awaited_with(new_shuffle)
+            controller.status_indicator.show_status.assert_called_once_with("shuffle", new_shuffle)
         finally:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -76,6 +79,7 @@ class TestController:
             controller.event_source.put_nowait(Event("control", "repeat"))
             await asyncio.sleep(0)
             player_repeat.assert_awaited_with(next_repeat)
+            controller.status_indicator.show_status.assert_called_once_with("repeat", next_repeat)
         finally:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
