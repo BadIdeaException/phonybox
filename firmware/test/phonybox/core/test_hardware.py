@@ -47,10 +47,15 @@ CONTROL_DEFINITION = [
         ("pn532_irq", "irq", 15)
     ]
 
+
+@pytest.fixture(autouse=True)
+def mock_pn532(monkeypatch):
+    monkeypatch.setattr("phonybox.core.hardware.PN532", MockPN532)
+
+
 @pytest_asyncio.fixture
 async def hw():
-    with patch("phonybox.core.hardware.PN532", MockPN532):
-        return Hardware(CONTROL_DEFINITION, [])
+    return Hardware(CONTROL_DEFINITION, [])
 
 
 @pytest.mark.asyncio
@@ -106,13 +111,13 @@ class TestHardware:
             ("status1", []),
             ("status2", [])
         ]        
-        with patch("phonybox.core.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, STATUS_DEFINITION) as hw:
+        with Hardware(CONTROL_DEFINITION, STATUS_DEFINITION) as hw:
             for name, _ in STATUS_DEFINITION:
                 assert type(hw.statuses["STATUS_" + name.upper()]) is Status
 
 
     async def test_show_status_simple(self):
-        with patch("phonybox.core.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, []) as hw:
+        with Hardware(CONTROL_DEFINITION, []) as hw:
             status = Status([ hw.controls["led1_control"].on ])
             hw.show_status(status)
             assert hw.controls["led1_control"].value == 1
@@ -120,7 +125,7 @@ class TestHardware:
 
 
     async def test_status_multiple(self):
-        with patch("phonybox.core.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, []) as hw:
+        with Hardware(CONTROL_DEFINITION, []) as hw:
             status = Status([ hw.controls["led1_control"].on, hw.controls["led2_control"].on ])
             hw.show_status(status)
             assert hw.controls["led1_control"].value == 1
