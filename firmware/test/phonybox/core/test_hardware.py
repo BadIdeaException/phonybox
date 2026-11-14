@@ -1,4 +1,4 @@
-from phonybox.hardware import Hardware, Status
+from phonybox.core.hardware import Hardware, Status
 from phonybox.drivers.pn532 import Card
 from phonybox.players.player import Player
 from gpiozero import Button, LED, GPIODevice
@@ -49,7 +49,7 @@ CONTROL_DEFINITION = [
 
 @pytest_asyncio.fixture
 async def hw():
-    with patch("phonybox.hardware.PN532", MockPN532):
+    with patch("phonybox.core.hardware.PN532", MockPN532):
         return Hardware(CONTROL_DEFINITION, [])
 
 
@@ -106,13 +106,13 @@ class TestHardware:
             ("status1", []),
             ("status2", [])
         ]        
-        with patch("phonybox.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, STATUS_DEFINITION) as hw:
+        with patch("phonybox.core.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, STATUS_DEFINITION) as hw:
             for name, _ in STATUS_DEFINITION:
                 assert type(hw.statuses["STATUS_" + name.upper()]) is Status
 
 
     async def test_show_status_simple(self):
-        with patch("phonybox.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, []) as hw:
+        with patch("phonybox.core.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, []) as hw:
             status = Status([ hw.controls["led1_control"].on ])
             hw.show_status(status)
             assert hw.controls["led1_control"].value == 1
@@ -120,7 +120,7 @@ class TestHardware:
 
 
     async def test_status_multiple(self):
-        with patch("phonybox.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, []) as hw:
+        with patch("phonybox.core.hardware.PN532", MockPN532), Hardware(CONTROL_DEFINITION, []) as hw:
             status = Status([ hw.controls["led1_control"].on, hw.controls["led2_control"].on ])
             hw.show_status(status)
             assert hw.controls["led1_control"].value == 1

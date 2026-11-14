@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable
 from phonybox.drivers.pn532 import Card, PN532, NFCError
 from typing import override, Protocol, Literal
 from dataclasses import dataclass
-from .players.player import Player
+
 
 type Control = Button | LED
 

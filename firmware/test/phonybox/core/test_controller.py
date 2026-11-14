@@ -1,5 +1,5 @@
-from phonybox.controller import Controller
-from phonybox.hardware import Event, StatusIndicator
+from phonybox.core.controller import Controller
+from phonybox.core.hardware import Event, StatusIndicator
 from phonybox.players.player import Player
 from unittest.mock import Mock, MagicMock, AsyncMock
 import contextlib

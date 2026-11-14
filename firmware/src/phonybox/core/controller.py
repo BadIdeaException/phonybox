@@ -1,4 +1,4 @@
-from .players.player import Player, PlayerFactory
+from phonybox.players.player import Player, PlayerFactory
 from .hardware import StatusIndicator
 import asyncio
 
