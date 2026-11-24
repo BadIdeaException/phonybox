@@ -1,5 +1,4 @@
 from phonybox.players.player import Player, PlayerFactory
-from .hardware import StatusIndicator
 import asyncio
 
 
@@ -9,10 +8,9 @@ class Controller:
     factories: list[PlayerFactory]
 
     
-    def __init__(self, event_source, status_indicator: StatusIndicator):
+    def __init__(self, event_source):
         self.current_player = None
         self.event_source = event_source
-        self.status_indicator = status_indicator
         self.factories = []
 
 
@@ -38,14 +36,13 @@ class Controller:
         assert self.current_player is not None
         shuffle = await self.current_player.shuffle()
         shuffle = await self.current_player.shuffle(not shuffle)
-        self.status_indicator.show_status("shuffle", shuffle)
+
 
 
     async def on_repeat(self) -> None:
         assert self.current_player is not None
         repeat = await self.current_player.repeat()
-        repeat = await self.current_player.repeat(Player.RepeatType((repeat + 1) % 3))
-        self.status_indicator.show_status("repeat", repeat)
+        await self.current_player.repeat(Player.RepeatType((repeat + 1) % 3))
 
 
     async def run(self) -> None:

@@ -1,6 +1,5 @@
-from phonybox.core.hardware import Hardware, Status
+from phonybox.core.hardware import Hardware
 from phonybox.drivers.pn532 import Card
-from phonybox.players.player import Player
 from gpiozero import Button, LED, GPIODevice
 import asyncio
 import pytest
@@ -42,9 +41,8 @@ class MockPN532:
 
 CONTROL_DEFINITION = [
         ("button_control", "button", 11),
-        ("led1_control", "led", 12),
-        ("led2_control", "led", 13),
-        ("pn532_irq", "irq", 15)
+        ("led_control", "led", 12),
+        ("pn532_irq", "irq", 13)
     ]
 
 
@@ -55,7 +53,8 @@ def mock_pn532(monkeypatch):
 
 @pytest_asyncio.fixture
 async def hw():
-    return Hardware(CONTROL_DEFINITION, [])
+    with patch("phonybox.core.hardware.PN532", MockPN532):
+        return Hardware(CONTROL_DEFINITION)
 
 
 @pytest.mark.asyncio
@@ -74,7 +73,7 @@ class TestHardware:
 
     async def test_unknown_control_kind(self):        
         with pytest.raises(ValueError):
-            Hardware([("error_control", "unknown_kind", 5)], [])
+            Hardware([("error_control", "unknown_kind", 5)])
 
     
     @pytest.mark.parametrize("control_name", ("button_control",))
@@ -104,32 +103,6 @@ class TestHardware:
             assert event.type == "nfc_tag"
             assert isinstance(event.payload, Card)
             assert event.payload == card
-
-
-    async def test_status_creation(self):
-        STATUS_DEFINITION = [
-            ("status1", []),
-            ("status2", [])
-        ]        
-        with Hardware(CONTROL_DEFINITION, STATUS_DEFINITION) as hw:
-            for name, _ in STATUS_DEFINITION:
-                assert type(hw.statuses["STATUS_" + name.upper()]) is Status
-
-
-    async def test_show_status_simple(self):
-        with Hardware(CONTROL_DEFINITION, []) as hw:
-            status = Status([ hw.controls["led1_control"].on ])
-            hw.show_status(status)
-            assert hw.controls["led1_control"].value == 1
-            assert hw.controls["led2_control"].value == 0
-
-
-    async def test_status_multiple(self):
-        with Hardware(CONTROL_DEFINITION, []) as hw:
-            status = Status([ hw.controls["led1_control"].on, hw.controls["led2_control"].on ])
-            hw.show_status(status)
-            assert hw.controls["led1_control"].value == 1
-            assert hw.controls["led2_control"].value == 1
 
 
     async def test_cleanup_on_context_manager_exit(self, hw):

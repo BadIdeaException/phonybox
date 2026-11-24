@@ -5,14 +5,12 @@ import contextlib
 from threading import Thread
 from collections.abc import Callable, Iterable
 from phonybox.drivers.pn532 import Card, PN532, NFCError
-from typing import override, Protocol, Literal
+from typing import override
 from dataclasses import dataclass
 
 
 type Control = Button | LED
 
-type ControlDefinition = tuple[str, Literal["button", "led", "irq"], int]
-type StatusDefinition = tuple[str, Iterable[tuple[str, str]]]
 
 @dataclass
 class Event:
@@ -29,24 +27,9 @@ class Event:
             raise ValueError(f"Unknown payload kind {type(payload).__name__}")
 
 
-class Status:
-    def __init__(self, config: Iterable[Callable]):
-        self.config = config
-
-
-    def __call__(self):
-        for c in self.config:
-            c()
-
-
-class StatusIndicator(Protocol):
-    def show_status(self, status: Status) -> None: ...
-
-
-class Hardware(StatusIndicator):
+class Hardware:
     controls: dict[str, Control]
     events: asyncio.Queue
-    statuses: dict[str, Status]
 
 
     class NFC_Thread(Thread):
@@ -80,7 +63,7 @@ class Hardware(StatusIndicator):
             self.pn532.close()
 
 
-    def __init__(self, controls: Iterable[ControlDefinition], statuses: Iterable[StatusDefinition]):
+    def __init__(self, controls: Iterable[tuple[str, str, int]]):
         loop = asyncio.get_running_loop()
         def put_event(event: str | Card) -> None:
             """
@@ -94,7 +77,6 @@ class Hardware(StatusIndicator):
 
         self.controls = {}
         self.events = asyncio.Queue()
-        self.statuses = {}
         self.nfc = None
         try:
             irq_pin = None
@@ -113,19 +95,9 @@ class Hardware(StatusIndicator):
             self.nfc = Hardware.NFC_Thread(irq_pin)
             self.nfc.when_card = put_event
             self.nfc.start()
-
-            for name, config in statuses:
-                attr_name = "STATUS_" + name.upper()
-                methods = [ getattr(self.controls[device_name], device_method_name) for device_name, device_method_name in config ]
-                self.statuses[attr_name] = Status(methods)
         except:
             self.close()
             raise
-
-
-    @override
-    def show_status(self, status: Status):
-        status()
 
 
     def close(self):
