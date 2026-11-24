@@ -37,7 +37,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.event_source.put_nowait(Event("control", event_name))
+            controller.incoming.put_nowait(Event("control", event_name))
             await asyncio.sleep(0)
             spy.assert_awaited_once()
         finally:
@@ -53,9 +53,10 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.event_source.put_nowait(Event("control", "shuffle"))
+            controller.incoming.put_nowait(Event("control", "shuffle"))
             await asyncio.sleep(0)
-            player_shuffle.assert_awaited_with(not current_shuffle)
+            new_shuffle = not current_shuffle
+            player_shuffle.assert_awaited_with(new_shuffle)
         finally:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -73,7 +74,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.event_source.put_nowait(Event("control", "repeat"))
+            controller.incoming.put_nowait(Event("control", "repeat"))
             await asyncio.sleep(0)
             player_repeat.assert_awaited_with(next_repeat)
         finally:
@@ -93,7 +94,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.event_source.put_nowait(Event("nfc_tag", uri))
+            controller.incoming.put_nowait(Event("nfc_tag", uri))
             await asyncio.sleep(0)
             assert controller.current_player is expected_player
             for factory in controller.factories:

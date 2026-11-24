@@ -2,6 +2,7 @@ from phonybox.core.hardware import Hardware
 from phonybox.drivers.pn532 import Card
 from gpiozero import Button, LED, GPIODevice
 import asyncio
+import contextlib
 import pytest
 import pytest_asyncio
 import time
@@ -53,8 +54,7 @@ def mock_pn532(monkeypatch):
 
 @pytest_asyncio.fixture
 async def hw():
-    with patch("phonybox.core.hardware.PN532", MockPN532):
-        return Hardware(CONTROL_DEFINITION)
+    return Hardware(CONTROL_DEFINITION, outgoing=asyncio.Queue())
 
 
 @pytest.mark.asyncio
@@ -73,36 +73,48 @@ class TestHardware:
 
     async def test_unknown_control_kind(self):        
         with pytest.raises(ValueError):
-            Hardware([("error_control", "unknown_kind", 5)])
+            Hardware([("error_control", "unknown_kind", 5)], outgoing=asyncio.Queue())
 
     
     @pytest.mark.parametrize("control_name", ("button_control",))
     async def test_emits_events_on_control(self, hw, control_name):
         with hw:
+            run_task = asyncio.create_task(hw.run(polling_timeout=0.1))
             control = hw.controls[control_name]
             if control.pin.pull == "up":
                 control.pin.drive_low()
-                control.pin.drive_high()
+                release = control.pin.drive_high
             else:
                 control.pin.drive_high()
-                control.pin.drive_low()
+                release = control.pin.drive_low
 
-            event = await asyncio.wait_for(hw.events.get(), timeout=0.1)
-            assert event.type == "control"
-            assert event.payload == control_name
+            try:
+                event = await asyncio.wait_for(hw.outgoing.get(), timeout=0.1)
+                assert event.type == "control"
+                assert event.payload == control_name
+            finally:
+                release()
+                run_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await run_task
 
 
     async def test_emits_events_on_card(self, hw):
         card = Card("01020304050607", object())
         with hw:
-            hw.nfc.pn532.present_card(card)
+            run_task = asyncio.create_task(hw.run(polling_timeout=0.1))
+            hw.pn532.present_card(card)
 
-            event = await asyncio.wait_for(hw.events.get(), timeout=0.1)
-            hw.nfc.pn532.remove_card()
-
-            assert event.type == "nfc_tag"
-            assert isinstance(event.payload, Card)
-            assert event.payload == card
+            try:
+                event = await asyncio.wait_for(hw.outgoing.get(), timeout=0.1)
+                assert event.type == "nfc_tag"
+                assert isinstance(event.payload, Card)
+                assert event.payload == card
+            finally:
+                hw.pn532.remove_card()
+                run_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await run_task
 
 
     async def test_cleanup_on_context_manager_exit(self, hw):
@@ -110,7 +122,7 @@ class TestHardware:
             pass
 
         with pytest.raises(asyncio.QueueShutDown):
-            hw.events.put_nowait(None)
+            hw.outgoing.put_nowait(None)
         for control in hw.controls.values():
             assert control.closed
-        assert hw.nfc.pn532.irq.closed
+        assert hw.pn532.irq.closed

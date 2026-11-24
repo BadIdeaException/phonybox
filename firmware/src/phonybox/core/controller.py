@@ -1,16 +1,17 @@
 from phonybox.players.player import Player, PlayerFactory
+from .hardware import Event
 import asyncio
 
 
 class Controller:    
     current_player: Player | None
-    events: asyncio.Queue
     factories: list[PlayerFactory]
+    incoming: asyncio.Queue[Event]
 
     
-    def __init__(self, event_source):
+    def __init__(self, incoming: asyncio.Queue[Event]):
         self.current_player = None
-        self.event_source = event_source
+        self.incoming = incoming
         self.factories = []
 
 
@@ -38,16 +39,15 @@ class Controller:
         shuffle = await self.current_player.shuffle(not shuffle)
 
 
-
     async def on_repeat(self) -> None:
         assert self.current_player is not None
         repeat = await self.current_player.repeat()
-        await self.current_player.repeat(Player.RepeatType((repeat + 1) % 3))
+        repeat = await self.current_player.repeat(Player.RepeatType((repeat + 1) % 3))
 
 
     async def run(self) -> None:
         while True:
-            event = await self.event_source.get()
+            event = await self.incoming.get()
             if event.type == "nfc_tag":
                 uri = event.payload                
                 player_factory = next(player for player in self.factories if player.wants(uri))
