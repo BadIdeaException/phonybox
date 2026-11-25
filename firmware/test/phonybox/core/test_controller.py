@@ -1,5 +1,5 @@
 from phonybox.core.controller import Controller
-from phonybox.core.hardware import Event
+from phonybox.core.hardware import ControlEvent, NFCEvent, StatusEvent
 from phonybox.players.player import Player
 from unittest.mock import Mock, MagicMock, AsyncMock
 import contextlib
@@ -13,8 +13,9 @@ def controller():
     Initialize a controller with a mocked current_player and two mock factories. 
     The first factory never wants, the second always wants and returns a mocked player.
     """
-    events = asyncio.Queue()
-    controller = Controller(events)
+    outgoing = asyncio.Queue()
+    incoming = asyncio.Queue()
+    controller = Controller(outgoing, incoming)
 
     factory1 = Mock()
     factory1.wants.return_value = False
@@ -37,7 +38,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(Event("control", event_name))
+            controller.incoming.put_nowait(ControlEvent("control", event_name))
             await asyncio.sleep(0)
             spy.assert_awaited_once()
         finally:
@@ -53,10 +54,14 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(Event("control", "shuffle"))
+            controller.incoming.put_nowait(ControlEvent("control", "shuffle"))
             await asyncio.sleep(0)
             new_shuffle = not current_shuffle
             player_shuffle.assert_awaited_with(new_shuffle)
+
+            event = controller.outgoing.get_nowait()
+            assert event.type == "status"
+            assert event.payload == { "shuffle": int(new_shuffle) }
         finally:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -74,9 +79,17 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(Event("control", "repeat"))
+            controller.incoming.put_nowait(ControlEvent("control", "repeat"))
             await asyncio.sleep(0)
             player_repeat.assert_awaited_with(next_repeat)
+
+            event = controller.outgoing.get_nowait()
+            assert event.type == "status"
+            assert event.payload == {
+                Player.RepeatType.NONE: Controller.STATUS_REPEAT_NONE,
+                Player.RepeatType.TRACK: Controller.STATUS_REPEAT_TRACK,
+                Player.RepeatType.PLAYLIST: Controller.STATUS_REPEAT_PLAYLIST
+            }[next_repeat]
         finally:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -94,7 +107,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(Event("nfc_tag", uri))
+            controller.incoming.put_nowait(NFCEvent("nfc_tag", uri))
             await asyncio.sleep(0)
             assert controller.current_player is expected_player
             for factory in controller.factories:

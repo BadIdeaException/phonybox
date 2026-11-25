@@ -1,5 +1,5 @@
 from phonybox.players.player import Player, PlayerFactory
-from .hardware import Event
+from .hardware import Event, StatusEvent
 import asyncio
 
 
@@ -7,11 +7,20 @@ class Controller:
     current_player: Player | None
     factories: list[PlayerFactory]
     incoming: asyncio.Queue[Event]
+    outgoing: asyncio.Queue[Event]
 
     
-    def __init__(self, incoming: asyncio.Queue[Event]):
+    STATUS_SHUFFLE_ON = { "shuffle": 1 }
+    STATUS_SHUFFLE_OFF = { "shuffle": 0 }
+    STATUS_REPEAT_NONE = { "repeat_track": 0, "repeat_playlist": 0 }
+    STATUS_REPEAT_PLAYLIST = { "repeat_track": 0, "repeat_playlist": 1 }
+    STATUS_REPEAT_TRACK = { "repeat_track": 1, "repeat_playlist": 0 }
+
+
+    def __init__(self, incoming: asyncio.Queue[Event], outgoing: asyncio.Queue[Event]):
         self.current_player = None
         self.incoming = incoming
+        self.outgoing = outgoing
         self.factories = []
 
 
@@ -37,12 +46,16 @@ class Controller:
         assert self.current_player is not None
         shuffle = await self.current_player.shuffle()
         shuffle = await self.current_player.shuffle(not shuffle)
+        status = getattr(Controller, f"STATUS_SHUFFLE_{"ON" if shuffle else "OFF"}")
+        self.outgoing.put_nowait(StatusEvent("status", status))
 
 
     async def on_repeat(self) -> None:
         assert self.current_player is not None
         repeat = await self.current_player.repeat()
         repeat = await self.current_player.repeat(Player.RepeatType((repeat + 1) % 3))
+        status = getattr(Controller, f"STATUS_REPEAT_{repeat.name.upper()}")
+        self.outgoing.put_nowait(StatusEvent("status", status))
 
 
     async def run(self) -> None:
