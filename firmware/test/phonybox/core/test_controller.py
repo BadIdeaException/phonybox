@@ -47,7 +47,7 @@ class TestController:
                 await task
 
 
-    @pytest.mark.parametrize("current_shuffle", [ True, False ])
+    @pytest.mark.parametrize("current_shuffle", [ True, False ], ids=["on", "off"])
     async def test_shuffle(self, controller, current_shuffle, mocker):
         player_shuffle = controller.current_player.shuffle
         player_shuffle.side_effect=lambda arg=None: current_shuffle if arg is None else arg
@@ -69,9 +69,9 @@ class TestController:
 
 
     @pytest.mark.parametrize(("current_repeat", "next_repeat"), [ 
-        (Player.RepeatType.NONE, Player.RepeatType.PLAYLIST),
-        (Player.RepeatType.PLAYLIST, Player.RepeatType.TRACK),
-        (Player.RepeatType.TRACK, Player.RepeatType.NONE)
+        pytest.param(Player.RepeatType.NONE, Player.RepeatType.PLAYLIST, id="none -> playlist"),
+        pytest.param(Player.RepeatType.PLAYLIST, Player.RepeatType.TRACK, id="playlist -> track"),
+        pytest.param(Player.RepeatType.TRACK, Player.RepeatType.NONE, id="track -> none")
     ])
     async def test_repeat(self, controller, current_repeat, next_repeat, mocker):
         player_repeat = controller.current_player.repeat
