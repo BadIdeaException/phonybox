@@ -1,4 +1,4 @@
-from phonybox.core.hardware import Hardware
+from phonybox.core.hardware import Hardware, StatusEvent
 from phonybox.drivers.pn532 import Card
 from gpiozero import Button, LED, GPIODevice
 import asyncio
@@ -41,8 +41,9 @@ class MockPN532:
 
 
 CONTROL_DEFINITION = [
-        ("button_control", "button", 11),
-        ("led_control", "led", 12),
+        ("button_control", "button", 10),
+        ("led1_control", "led", 11),
+        ("led2_control", "led", 12),
         ("pn532_irq", "irq", 13)
     ]
 
@@ -54,7 +55,7 @@ def mock_pn532(monkeypatch):
 
 @pytest_asyncio.fixture
 async def hw():
-    return Hardware(CONTROL_DEFINITION, outgoing=asyncio.Queue())
+    return Hardware(CONTROL_DEFINITION, outgoing=asyncio.Queue(), incoming=asyncio.Queue())
 
 
 @pytest.mark.asyncio
@@ -73,7 +74,7 @@ class TestHardware:
 
     async def test_unknown_control_kind(self):        
         with pytest.raises(ValueError):
-            Hardware([("error_control", "unknown_kind", 5)], outgoing=asyncio.Queue())
+            Hardware([("error_control", "unknown_kind", 5)], outgoing=asyncio.Queue(), incoming=asyncio.Queue())
 
     
     @pytest.mark.parametrize("control_name", ("button_control",))
@@ -126,3 +127,27 @@ class TestHardware:
         for control in hw.controls.values():
             assert control.closed
         assert hw.pn532.irq.closed
+
+
+    @pytest.mark.parametrize("status", [ 
+        pytest.param({ "led1_control": 1 }, id="simple on"),
+        pytest.param({ "led1_control": 0 }, id="simple off"),
+        pytest.param({ "led1_control": 0, "led2_control": 0 }, id="complex both off"),
+        pytest.param({ "led1_control": 1, "led2_control": 1 }, id="complex both on"),
+        pytest.param({ "led1_control": 0, "led2_control": 1 }, id="complex mixed")
+    ])
+    async def test_receives_status(self, hw, status):
+        with hw:
+            run_task = asyncio.create_task(hw.run(polling_timeout=0.01))
+            
+            try:
+                for control_name, value in status.items():
+                    hw.controls[control_name].value = int(not value)
+                    hw.incoming.put_nowait(StatusEvent("status", status))
+                    await asyncio.sleep(0.01)
+                    assert hw.controls[control_name].value == value
+            finally:
+                run_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await run_task
+

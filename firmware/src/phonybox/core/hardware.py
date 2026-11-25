@@ -17,18 +17,21 @@ type Control = Button | LED
 
 
 @dataclass
-class Event:
-    type: str
-    payload: str | Card
+class ControlEvent:
+    type: Literal["control"]
+    payload: str
 
-    @classmethod
-    def from_payload(cls, payload: str | Card) -> Event:
-        if isinstance(payload, Card):
-            return Event("nfc_tag", payload)
-        elif isinstance(payload, str):
-            return Event("control", payload)        
-        else:
-            raise ValueError(f"Unknown payload kind {type(payload).__name__}")
+@dataclass
+class NFCEvent:
+    type: Literal["nfc_tag"]
+    payload: Card
+
+@dataclass
+class StatusEvent:
+    type: Literal["status"]
+    payload: dict[str, int]
+
+type Event = ControlEvent | NFCEvent | StatusEvent
 
 
 class Hardware:
@@ -39,8 +42,9 @@ class Hardware:
     incoming: asyncio.Queue[Event]
 
 
-    def __init__(self, controls: Iterable[ControlDefinition], *, outgoing: asyncio.Queue[Event]):
+    def __init__(self, controls: Iterable[ControlDefinition], *, outgoing: asyncio.Queue[Event], incoming: asyncio.Queue[Event]):
         self.controls = {}
+        self.incoming = incoming
         self.outgoing = outgoing
         try:
             irq_pin = None
@@ -65,14 +69,22 @@ class Hardware:
             while True:
                 await asyncio.to_thread(button.wait_for_press, timeout=polling_timeout)
                 if button.is_pressed:
-                    await self.outgoing.put(Event("control", name))
+                    await self.outgoing.put(ControlEvent("control", name))
 
         async def watch_nfc():
             while True:
                 uid = await asyncio.to_thread(self.pn532.wait_for_card, timeout=polling_timeout)
                 if uid is not None:
                     card = await asyncio.to_thread(self.pn532.read_card, uid)
-                    await self.outgoing.put(Event("nfc_tag", card))
+                    await self.outgoing.put(NFCEvent("nfc_tag", card))
+
+        async def watch_incoming():
+            while True:
+                event = await self.incoming.get()
+                if event.type == "status":
+                    for control_name, value in event.payload.items():
+                        self.controls[control_name].value = value
+
 
         async with asyncio.TaskGroup() as tg:
             for name, control in self.controls.items():
@@ -80,10 +92,12 @@ class Hardware:
                     tg.create_task(watch_button(name, control))
 
             tg.create_task(watch_nfc())
+            tg.create_task(watch_incoming())
 
 
     def close(self):
         self.outgoing.shutdown(immediate=True)
+        self.incoming.shutdown(immediate=True)
         for control in self.controls.values():
             if isinstance(control, LED):
                 control.off()
