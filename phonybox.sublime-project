@@ -2,7 +2,15 @@
 	"folders":
 	[
 		{
-			"path": "."
+			"path": ".",
 		},
 	],
+	"settings":
+	{
+		"codex":
+		{
+			"agent_tools_version": 2,
+			"session_id": "01a212cc-ec1e-7953-9f0a-5c98ec2d016d",
+		},
+	},
 }
