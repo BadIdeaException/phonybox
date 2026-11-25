@@ -1,5 +1,5 @@
 from phonybox.core.controller import Controller
-from phonybox.core.hardware import ControlEvent, NFCEvent, StatusEvent
+from phonybox.core.message import ControlMessage, NFCMessage, StatusMessage
 from phonybox.players.player import Player
 from unittest.mock import Mock, MagicMock, AsyncMock
 import contextlib
@@ -38,7 +38,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(ControlEvent("control", event_name))
+            controller.incoming.put_nowait(ControlMessage(event_name))
             await asyncio.sleep(0)
             spy.assert_awaited_once()
         finally:
@@ -54,7 +54,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(ControlEvent("control", "shuffle"))
+            controller.incoming.put_nowait(ControlMessage("shuffle"))
             await asyncio.sleep(0)
             new_shuffle = not current_shuffle
             player_shuffle.assert_awaited_with(new_shuffle)
@@ -79,7 +79,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(ControlEvent("control", "repeat"))
+            controller.incoming.put_nowait(ControlMessage("repeat"))
             await asyncio.sleep(0)
             player_repeat.assert_awaited_with(next_repeat)
 
@@ -107,7 +107,7 @@ class TestController:
 
         task = asyncio.create_task(controller.run())
         try:
-            controller.incoming.put_nowait(NFCEvent("nfc_tag", uri))
+            controller.incoming.put_nowait(NFCMessage(uri))
             await asyncio.sleep(0)
             assert controller.current_player is expected_player
             for factory in controller.factories:

@@ -1,4 +1,5 @@
-from phonybox.core.hardware import Hardware, StatusEvent
+from phonybox.core.hardware import Hardware
+from phonybox.core.message import StatusMessage
 from phonybox.drivers.pn532 import Card
 from gpiozero import Button, LED, GPIODevice
 import asyncio
@@ -143,7 +144,7 @@ class TestHardware:
             try:
                 for control_name, value in status.items():
                     hw.controls[control_name].value = int(not value)
-                    hw.incoming.put_nowait(StatusEvent("status", status))
+                    hw.incoming.put_nowait(StatusMessage(status))
                     await asyncio.sleep(0.01)
                     assert hw.controls[control_name].value == value
             finally:

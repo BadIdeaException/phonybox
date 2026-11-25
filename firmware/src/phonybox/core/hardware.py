@@ -6,9 +6,7 @@ import threading
 import functools
 from collections.abc import Callable, Iterable
 from phonybox.drivers.pn532 import Card, PN532, NFCError
-from typing import Coroutine, Literal
-from dataclasses import dataclass
-from .channel import Channel
+from .message import Message, ControlMessage, NFCMessage
 
 
 type ControlDefinition = tuple[str, Literal["button", "led", "irq"], int]
@@ -16,33 +14,15 @@ type ControlDefinition = tuple[str, Literal["button", "led", "irq"], int]
 type Control = Button | LED
 
 
-@dataclass
-class ControlEvent:
-    type: Literal["control"]
-    payload: str
-
-@dataclass
-class NFCEvent:
-    type: Literal["nfc_tag"]
-    payload: Card
-
-@dataclass
-class StatusEvent:
-    type: Literal["status"]
-    payload: dict[str, int]
-
-type Event = ControlEvent | NFCEvent | StatusEvent
-
-
 class Hardware:
     controls: dict[str, Control]
 
     # Message channels
-    outgoing: asyncio.Queue[Event]
-    incoming: asyncio.Queue[Event]
+    outgoing: asyncio.Queue[Message]
+    incoming: asyncio.Queue[Message]
 
 
-    def __init__(self, controls: Iterable[ControlDefinition], *, outgoing: asyncio.Queue[Event], incoming: asyncio.Queue[Event]):
+    def __init__(self, controls: Iterable[ControlDefinition], *, outgoing: asyncio.Queue[Message], incoming: asyncio.Queue[Message]):
         self.controls = {}
         self.incoming = incoming
         self.outgoing = outgoing
@@ -69,14 +49,14 @@ class Hardware:
             while True:
                 await asyncio.to_thread(button.wait_for_press, timeout=polling_timeout)
                 if button.is_pressed:
-                    await self.outgoing.put(ControlEvent("control", name))
+                    await self.outgoing.put(ControlMessage(name))
 
         async def watch_nfc():
             while True:
                 uid = await asyncio.to_thread(self.pn532.wait_for_card, timeout=polling_timeout)
                 if uid is not None:
                     card = await asyncio.to_thread(self.pn532.read_card, uid)
-                    await self.outgoing.put(NFCEvent("nfc_tag", card))
+                    await self.outgoing.put(NFCMessage(card))
 
         async def watch_incoming():
             while True:
